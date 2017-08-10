@@ -1,4 +1,4 @@
-import QR from "./gfx/quad_renderer"
+let QR = require("./gfx/quad_renderer");
 
 window.onload = (function() {
     return function() {

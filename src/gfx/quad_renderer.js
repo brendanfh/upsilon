@@ -160,4 +160,4 @@ let QuadRenderer = (function() {
     return Renderer;
 })();
 
-export default QuadRenderer;
+module.exports = QuadRenderer;

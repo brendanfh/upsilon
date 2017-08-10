@@ -65,26 +65,23 @@
 /************************************************************************/
 /******/ ([
 /* 0 */
-/***/ (function(module, __webpack_exports__, __webpack_require__) {
+/***/ (function(module, exports, __webpack_require__) {
 
-"use strict";
-Object.defineProperty(__webpack_exports__, "__esModule", { value: true });
-/* harmony import */ var __WEBPACK_IMPORTED_MODULE_0__gfx_quad_renderer__ = __webpack_require__(1);
-
+let QR = __webpack_require__(1);
 
 window.onload = (function() {
     return function() {
-        __WEBPACK_IMPORTED_MODULE_0__gfx_quad_renderer__["a" /* default */].init("game", { antialias: false });
+        QR.init("game", { antialias: false });
         
-        __WEBPACK_IMPORTED_MODULE_0__gfx_quad_renderer__["a" /* default */].setClearColor(0, 0, 0, 1);
-        __WEBPACK_IMPORTED_MODULE_0__gfx_quad_renderer__["a" /* default */].clear();
+        QR.setClearColor(0, 0, 0, 1);
+        QR.clear();
         
         let quad1 = new Quad(-.5, 0, 1, 1, 0, 0, 1, 1);
         let quad2 = new Quad(-1, 0, 1, 1, 1, 0, 1, 1);
         
-        quad1.pushData(1);
-        quad2.pushData(0);
-        __WEBPACK_IMPORTED_MODULE_0__gfx_quad_renderer__["a" /* default */].draw(0, 2);
+        quad1.pushData(1023);
+        quad2.pushData(1022);
+        QR.draw(1022, 2);
     };
 })();
 
@@ -121,15 +118,14 @@ class Quad {
     }
     
     pushData(id) {
-        __WEBPACK_IMPORTED_MODULE_0__gfx_quad_renderer__["a" /* default */].setData(id, this.data); 
+        QR.setData(id, this.data); 
     }
 }
 
 /***/ }),
 /* 1 */
-/***/ (function(module, __webpack_exports__, __webpack_require__) {
+/***/ (function(module, exports) {
 
-"use strict";
 let QuadRenderer = (function() {
     let canvas, gl;
     
@@ -164,7 +160,7 @@ let QuadRenderer = (function() {
         return shader;
     }
     
-    const MAX_QUADS = 8;
+    const MAX_QUADS = 1024;
     const VERTICIES_PER_QUAD = 4;
     const FLOATS_PER_VERTEX = 6;
     const BYTES_PER_FLOAT = 4;
@@ -292,7 +288,8 @@ let QuadRenderer = (function() {
     return Renderer;
 })();
 
-/* harmony default export */ __webpack_exports__["a"] = (QuadRenderer);
+module.exports = QuadRenderer;
+
 
 /***/ })
 /******/ ]);
