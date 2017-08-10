@@ -1,0 +1,30 @@
+{
+  "name": "upsilon",
+  "version": "0.0.1",
+  "description": "A game made in javascript and typescript and whatever other languages I want to use in it",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/brendanfh/upsilon.git"
+  },
+  "keywords": [
+    "javascript",
+    "game"
+  ],
+  "author": "Brendan Hansen",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/brendanfh/upsilon/issues"
+  },
+  "homepage": "https://github.com/brendanfh/upsilon#readme",
+  "dependencies": {
+    "coffee-loader": "^0.7.3",
+    "coffeescript": "^1.12.7",
+    "ts-loader": "^2.3.2",
+    "typescript": "^2.4.2",
+    "webpack": "^3.5.1"
+  }
+}
