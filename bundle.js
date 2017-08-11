@@ -70,18 +70,23 @@
 let QR = __webpack_require__(1);
 
 window.onload = (function() {
+    function draw() {
+        QR.clear();
+        
+        for (let i=0; i<1000; i++) {
+            let quad = new Quad((i%25)/25, ((i/25)|0)/40, 1/50, 1/50, 1, 0, 1, 1);
+            quad.pushData(i);
+        }
+        QR.draw(0, 1000);
+        window.requestAnimationFrame(draw);
+    }
+    
     return function() {
         QR.init("game", { antialias: false });
         
         QR.setClearColor(0, 0, 0, 1);
-        QR.clear();
         
-        let quad1 = new Quad(-.5, 0, 1, 1, 0, 0, 1, 1);
-        let quad2 = new Quad(-1, 0, 1, 1, 1, 0, 1, 1);
-        
-        quad1.pushData(1023);
-        quad2.pushData(1022);
-        QR.draw(1022, 2);
+        window.requestAnimationFrame(draw);
     };
 })();
 
