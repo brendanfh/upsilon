@@ -5,12 +5,6 @@ module.exports = {
         filename: "bundle.js"
     },
     resolve: {
-        extensions: ['.ts', '.tsx', '.js', ".coffee"]
-    },
-    module: {
-        loaders: [
-            { test: /\.tsx?$/, loader: 'ts-loader' },
-            { test: /\.coffee$/, loader: 'coffee-loader' }
-        ]
+        extensions: ['.js']
     }
 }
