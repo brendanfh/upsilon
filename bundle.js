@@ -69,27 +69,6 @@
 
 let QR = __webpack_require__(1);
 
-window.onload = (function() {
-    function draw() {
-        QR.clear();
-        
-        for (let i=0; i<1000; i++) {
-            let quad = new Quad((i%25)/25, ((i/25)|0)/40, 1/50, 1/50, 1, 0, 1, 1);
-            quad.pushData(i);
-        }
-        QR.draw(0, 1000);
-        window.requestAnimationFrame(draw);
-    }
-    
-    return function() {
-        QR.init("game", { antialias: false });
-        
-        QR.setClearColor(0, 0, 0, 1);
-        
-        window.requestAnimationFrame(draw);
-    };
-})();
-
 class Quad {
     constructor(x, y, w, h, r, g, b, a) {
         this.x = x;
@@ -126,6 +105,28 @@ class Quad {
         QR.setData(id, this.data); 
     }
 }
+
+window.onload = (function() {
+    function draw() {
+        QR.clear();
+        
+        for (let i=0; i<1000; i++) {
+            QR.setQuad(i, (i%25)/25, ((i/25)|0)/40, 1/50, 1/50, 1, 0, 1, 1);
+        }
+        
+        QR.draw(0, 1000);
+        window.requestAnimationFrame(draw);
+    }
+    
+    return function() {
+        QR.init("game", { antialias: false });
+        
+        QR.setClearColor(0, 0, 0, 1);
+        
+        window.requestAnimationFrame(draw);
+    };
+})();
+
 
 /***/ }),
 /* 1 */
@@ -180,6 +181,9 @@ let QuadRenderer = (function() {
     
     let RENDERING_AVAILABLE = false;
     
+    //Holds enough data for one quad
+    let quadBuffer = new Float32Array(VERTICIES_PER_QUAD * FLOATS_PER_VERTEX);
+    
     let Renderer = {
         init: function(canvasName, properties) {
             canvas = document.getElementById(canvasName);
@@ -223,6 +227,16 @@ let QuadRenderer = (function() {
         
         setData: function(id, data) {
             gl.bufferSubData(gl.ARRAY_BUFFER, id * BYTES_PER_FLOAT * FLOATS_PER_VERTEX * VERTICIES_PER_QUAD, data);  
+        },
+        
+        setQuad: function(id, x, y, w, h, r, g, b, a) {
+            quadBuffer.set([
+                x, y, r, g, b, a,
+                x, y+h, r, g, b, a,
+                x+w, y+h, r, g, b, a,
+                x+w, y, r, g, b, a,
+            ]);
+            gl.bufferSubData(gl.ARRAY_BUFFER, id * BYTES_PER_FLOAT * FLOATS_PER_VERTEX * VERTICIES_PER_QUAD, quadBuffer);
         },
         
         clearData: function(id, count=1) {

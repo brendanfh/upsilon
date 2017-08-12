@@ -47,6 +47,9 @@ let QuadRenderer = (function() {
     
     let RENDERING_AVAILABLE = false;
     
+    //Holds enough data for one quad
+    let quadBuffer = new Float32Array(VERTICIES_PER_QUAD * FLOATS_PER_VERTEX);
+    
     let Renderer = {
         init: function(canvasName, properties) {
             canvas = document.getElementById(canvasName);
@@ -90,6 +93,16 @@ let QuadRenderer = (function() {
         
         setData: function(id, data) {
             gl.bufferSubData(gl.ARRAY_BUFFER, id * BYTES_PER_FLOAT * FLOATS_PER_VERTEX * VERTICIES_PER_QUAD, data);  
+        },
+        
+        setQuad: function(id, x, y, w, h, r, g, b, a) {
+            quadBuffer.set([
+                x, y, r, g, b, a,
+                x, y+h, r, g, b, a,
+                x+w, y+h, r, g, b, a,
+                x+w, y, r, g, b, a,
+            ]);
+            gl.bufferSubData(gl.ARRAY_BUFFER, id * BYTES_PER_FLOAT * FLOATS_PER_VERTEX * VERTICIES_PER_QUAD, quadBuffer);
         },
         
         clearData: function(id, count=1) {

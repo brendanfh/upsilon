@@ -1,26 +1,5 @@
 let QR = require("./gfx/quad_renderer");
 
-window.onload = (function() {
-    function draw() {
-        QR.clear();
-        
-        for (let i=0; i<1000; i++) {
-            let quad = new Quad((i%25)/25, ((i/25)|0)/40, 1/50, 1/50, 1, 0, 1, 1);
-            quad.pushData(i);
-        }
-        QR.draw(0, 1000);
-        window.requestAnimationFrame(draw);
-    }
-    
-    return function() {
-        QR.init("game", { antialias: false });
-        
-        QR.setClearColor(0, 0, 0, 1);
-        
-        window.requestAnimationFrame(draw);
-    };
-})();
-
 class Quad {
     constructor(x, y, w, h, r, g, b, a) {
         this.x = x;
@@ -57,3 +36,24 @@ class Quad {
         QR.setData(id, this.data); 
     }
 }
+
+window.onload = (function() {
+    function draw() {
+        QR.clear();
+        
+        for (let i=0; i<1000; i++) {
+            QR.setQuad(i, (i%25)/25, ((i/25)|0)/40, 1/50, 1/50, 1, 0, 1, 1);
+        }
+        
+        QR.draw(0, 1000);
+        window.requestAnimationFrame(draw);
+    }
+    
+    return function() {
+        QR.init("game", { antialias: false });
+        
+        QR.setClearColor(0, 0, 0, 1);
+        
+        window.requestAnimationFrame(draw);
+    };
+})();
