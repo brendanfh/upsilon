@@ -6,7 +6,10 @@ let QuadRenderer = (function() {
     function getGL(canvas, properties) {
         let gl = canvas.getContext("webgl", properties);
         if (gl == null) {
-            throw "Failed to get WebGL Context";
+            gl = canvas.getContext("experimental-webgl", properties);
+            if (gl == null) {
+                throw "Failed to get WebGL Context";
+            }
         }
         return gl;
     }
