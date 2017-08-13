@@ -1,3 +1,5 @@
+let between = require("../util/basic").between;
+
 let QuadRenderer = (function() {
     let canvas, gl;
     
@@ -34,13 +36,13 @@ let QuadRenderer = (function() {
     
     const MAX_QUADS = 1024;
     const VERTICIES_PER_QUAD = 4;
-    const FLOATS_PER_VERTEX = 6;
+    const FLOATS_PER_VERTEX = 8;
     const BYTES_PER_FLOAT = 4;
     const INDICIES_PER_QUAD = 6;
     const BYTES_PER_INDEX = 2;
     
     let program;
-    let posAttrib, colAttrib;
+    let posAttrib, colAttrib, tcdAttrib;
     let projUniform, colUniform;
     
     let vbo, ibo;
@@ -59,6 +61,7 @@ let QuadRenderer = (function() {
             gl.useProgram(program);
             
             posAttrib = gl.getAttribLocation(program, "aPos");
+            tcdAttrib = gl.getAttribLocation(program, "aTcd");
             colAttrib = gl.getAttribLocation(program, "aCol");
             colUniform = gl.getUniformLocation(program, "uCol");
             
@@ -97,10 +100,10 @@ let QuadRenderer = (function() {
         
         setQuad: function(id, x, y, w, h, r, g, b, a) {
             quadBuffer.set([
-                x, y, r, g, b, a,
-                x, y+h, r, g, b, a,
-                x+w, y+h, r, g, b, a,
-                x+w, y, r, g, b, a,
+                x, y, 0, 0, r, g, b, a,
+                x, y+h, 0, 0, r, g, b, a,
+                x+w, y+h, 0, 0, r, g, b, a,
+                x+w, y, 0, 0, r, g, b, a,
             ]);
             gl.bufferSubData(gl.ARRAY_BUFFER, id * BYTES_PER_FLOAT * FLOATS_PER_VERTEX * VERTICIES_PER_QUAD, quadBuffer);
         },
@@ -129,32 +132,52 @@ let QuadRenderer = (function() {
     function enableRendering() {
         gl.useProgram(program);
         gl.enableVertexAttribArray(posAttrib);
+        gl.enableVertexAttribArray(tcdAttrib);
         gl.enableVertexAttribArray(colAttrib);
         
         gl.vertexAttribPointer(posAttrib, 2, gl.FLOAT, false, FLOATS_PER_VERTEX*BYTES_PER_FLOAT, 0*BYTES_PER_FLOAT);
-        gl.vertexAttribPointer(colAttrib, 4, gl.FLOAT, false, FLOATS_PER_VERTEX*BYTES_PER_FLOAT, 2*BYTES_PER_FLOAT);
+        gl.vertexAttribPointer(tcdAttrib, 2, gl.FLOAT, false, FLOATS_PER_VERTEX*BYTES_PER_FLOAT, 2*BYTES_PER_FLOAT);
+        gl.vertexAttribPointer(colAttrib, 4, gl.FLOAT, false, FLOATS_PER_VERTEX*BYTES_PER_FLOAT, 4*BYTES_PER_FLOAT);
         
         RENDERING_AVAILABLE = true;
     }
     
     function disableRendering() {
         gl.disableVertexAttribArray(posAttrib);
+        gl.disableVertexAttribArray(tcdAttrib);
         gl.disableVertexAttribArray(colAttrib);
         gl.useProgram(null);
         
         RENDERING_AVAILABLE = false;
     }
     
+    function setupTexture(id, image) {
+        if(!between(id, 0, 31)) {
+            throw "id should be between 0 and 31 (unsigned 5-bit integer)";
+        } 
+        
+        let tex = gl.createTexture();
+        gl.activeTexture(gl.TEXTURE0 + id);
+        gl.bindTexture(gl.TEXTURE_2D, tex);
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, image);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+        gl.activeTexture(null);
+    }
+    
     let vertexShader = `
         attribute vec2 aPos;
+        attribute vec2 aTcd;
         attribute vec4 aCol;
         
         varying vec4 vCol;
+        varying vec2 vTcd;
         
         uniform mat4 uProjection;
         
         void main() {
             vCol = aCol;
+            vTcd = aTcd;
             gl_Position = vec4(aPos, 0.0, 1.0);
         }
     `;
@@ -162,11 +185,15 @@ let QuadRenderer = (function() {
     let fragmentShader = `
         precision mediump float;
         
-        varying vec4 vCol;
+        varying vec4  vCol;
+        varying vec2  vTcd;
+        
         uniform vec4 uCol;
+        uniform sampler2D uTex;
     
         void main() {
-            gl_FragColor = vCol * uCol;
+            vec4 texColor = texture2D(uTex, vTcd);
+            gl_FragColor = vCol * uCol * texColor;
         }
     `;
     
