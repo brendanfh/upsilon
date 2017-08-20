@@ -1,4 +1,5 @@
 let between = require("../util/basic").between;
+let mat4 = require("../util/mat4");
 
 let QuadRenderer = (function() {
     let canvas, gl;
@@ -46,11 +47,17 @@ let QuadRenderer = (function() {
     
     let program;
     let posAttrib, colAttrib, tcdAttrib;
-    let projUniform, colUniform;
+    let viewUniform, colUniform, texUniform, worldUniform;
     
     let vbo, ibo;
     
+    let viewMat, worldMat;
+    
     let RENDERING_AVAILABLE = false;
+    let WORLD_MATRIX_DIRTY = true;
+    let VIEW_MATRIX_DIRTY = true;
+    
+    let textures = {};
     
     //Holds enough data for one quad
     let quadBuffer = new Float32Array(VERTICIES_PER_QUAD * FLOATS_PER_VERTEX);
@@ -67,6 +74,9 @@ let QuadRenderer = (function() {
             tcdAttrib = gl.getAttribLocation(program, "aTcd");
             colAttrib = gl.getAttribLocation(program, "aCol");
             colUniform = gl.getUniformLocation(program, "uCol");
+            texUniform = gl.getUniformLocation(program, "uTex");
+            viewUniform = gl.getUniformLocation(program, "uView");
+            worldUniform = gl.getUniformLocation(program, "uWorld");
             
             this.setColor(1, 1, 1, 1);
             
@@ -94,6 +104,9 @@ let QuadRenderer = (function() {
             gl.enable(gl.BLEND);
             gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
             
+            viewMat = mat4.identity();
+            worldMat = mat4.identity();
+            
             enableRendering();
         },
         
@@ -104,9 +117,9 @@ let QuadRenderer = (function() {
         setQuad: function(id, x, y, w, h, r, g, b, a) {
             quadBuffer.set([
                 x, y, 0, 0, r, g, b, a,
-                x, y+h, 0, 0, r, g, b, a,
-                x+w, y+h, 0, 0, r, g, b, a,
-                x+w, y, 0, 0, r, g, b, a,
+                x, y+h, 0, 1, r, g, b, a,
+                x+w, y+h, 1, 1, r, g, b, a,
+                x+w, y, 1, 0, r, g, b, a,
             ]);
             gl.bufferSubData(gl.ARRAY_BUFFER, id * BYTES_PER_FLOAT * FLOATS_PER_VERTEX * VERTICIES_PER_QUAD, quadBuffer);
         },
@@ -120,6 +133,7 @@ let QuadRenderer = (function() {
         },
         
         draw: function(start=0, count=MAX_QUADS) {
+            updateMatricies();
             gl.drawElements(gl.TRIANGLES, count * INDICIES_PER_QUAD, gl.UNSIGNED_SHORT, start * INDICIES_PER_QUAD * BYTES_PER_INDEX);
         },
         
@@ -129,7 +143,20 @@ let QuadRenderer = (function() {
         
         setColor: function(r, g, b, a) {
             gl.uniform4fv(colUniform, new Float32Array([r, g, b, a]));
-        }
+        },
+        
+        setSize: function(w, h) {
+            viewMat = mat4.ortho(0, w, 0, h);
+            VIEW_MATRIX_DIRTY = true;
+        },
+        
+        addTexture: function(id, image) {
+            textures[id] = setupTexture(id, image);
+        },
+        
+        useTexture: function(id) {
+            gl.uniform1i(texUniform, id);
+        },
     };
     
     function enableRendering() {
@@ -154,6 +181,17 @@ let QuadRenderer = (function() {
         RENDERING_AVAILABLE = false;
     }
     
+    function updateMatricies() {
+        if (WORLD_MATRIX_DIRTY) {
+            gl.uniformMatrix4fv(worldUniform, false, worldMat);
+            WORLD_MATRIX_DIRTY = false;
+        }
+        if (VIEW_MATRIX_DIRTY) {
+            gl.uniformMatrix4fv(viewUniform, false, viewMat);
+            VIEW_MATRIX_DIRTY = false;
+        }
+    }
+    
     function setupTexture(id, image) {
         if(!between(id, 0, 31)) {
             throw "id should be between 0 and 31 (unsigned 5-bit integer)";
@@ -165,7 +203,7 @@ let QuadRenderer = (function() {
         gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, image);
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
-        gl.activeTexture(null);
+        return tex;
     }
     
     let vertexShader = `
@@ -176,20 +214,21 @@ let QuadRenderer = (function() {
         varying vec4 vCol;
         varying vec2 vTcd;
         
-        uniform mat4 uProjection;
+        uniform mat4 uView;
+        uniform mat4 uWorld;
         
         void main() {
             vCol = aCol;
             vTcd = aTcd;
-            gl_Position = vec4(aPos, 0.0, 1.0);
+            gl_Position = uView * uWorld * vec4(aPos, 0.0, 1.0);
         }
     `;
     
     let fragmentShader = `
         precision mediump float;
         
-        varying vec4  vCol;
-        varying vec2  vTcd;
+        varying vec4 vCol;
+        varying vec2 vTcd;
         
         uniform vec4 uCol;
         uniform sampler2D uTex;

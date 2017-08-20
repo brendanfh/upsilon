@@ -110,20 +110,26 @@ window.onload = (function() {
     function draw() {
         QR.clear();
         
-        for (let i=0; i<1000; i++) {
-            QR.setQuad(i, (i%25)/25, ((i/25)|0)/40, 1/50, 1/50, 1, 0, 1, 1);
-        }
-        
+        QR.setQuad(0, 0, 0, 160, 120, 1, 0, 1, 1);
         QR.draw(0, 1000);
         window.requestAnimationFrame(draw);
     }
     
     return function() {
-        QR.init("game", { antialias: false });
-        
-        QR.setClearColor(0, 0, 0, 1);
-        
-        window.requestAnimationFrame(draw);
+        let image = new Image();
+        image.onload = function() {
+            QR.init("game", { antialias: false });
+            
+            QR.addTexture(0, image);
+            QR.useTexture(0);
+            
+            QR.setClearColor(0, 0, 0, 1);
+            QR.setSize(320, 240);
+            
+            window.requestAnimationFrame(draw);
+        }
+        image.src = "/res/test.png";
+        document.body.appendChild(image);
     };
 })();
 
@@ -133,6 +139,7 @@ window.onload = (function() {
 /***/ (function(module, exports, __webpack_require__) {
 
 let between = __webpack_require__(2).between;
+let mat4 = __webpack_require__(3);
 
 let QuadRenderer = (function() {
     let canvas, gl;
@@ -180,11 +187,17 @@ let QuadRenderer = (function() {
     
     let program;
     let posAttrib, colAttrib, tcdAttrib;
-    let projUniform, colUniform;
+    let viewUniform, colUniform, texUniform, worldUniform;
     
     let vbo, ibo;
     
+    let viewMat, worldMat;
+    
     let RENDERING_AVAILABLE = false;
+    let WORLD_MATRIX_DIRTY = true;
+    let VIEW_MATRIX_DIRTY = true;
+    
+    let textures = {};
     
     //Holds enough data for one quad
     let quadBuffer = new Float32Array(VERTICIES_PER_QUAD * FLOATS_PER_VERTEX);
@@ -201,6 +214,9 @@ let QuadRenderer = (function() {
             tcdAttrib = gl.getAttribLocation(program, "aTcd");
             colAttrib = gl.getAttribLocation(program, "aCol");
             colUniform = gl.getUniformLocation(program, "uCol");
+            texUniform = gl.getUniformLocation(program, "uTex");
+            viewUniform = gl.getUniformLocation(program, "uView");
+            worldUniform = gl.getUniformLocation(program, "uWorld");
             
             this.setColor(1, 1, 1, 1);
             
@@ -228,6 +244,9 @@ let QuadRenderer = (function() {
             gl.enable(gl.BLEND);
             gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
             
+            viewMat = mat4.identity();
+            worldMat = mat4.identity();
+            
             enableRendering();
         },
         
@@ -238,9 +257,9 @@ let QuadRenderer = (function() {
         setQuad: function(id, x, y, w, h, r, g, b, a) {
             quadBuffer.set([
                 x, y, 0, 0, r, g, b, a,
-                x, y+h, 0, 0, r, g, b, a,
-                x+w, y+h, 0, 0, r, g, b, a,
-                x+w, y, 0, 0, r, g, b, a,
+                x, y+h, 0, 1, r, g, b, a,
+                x+w, y+h, 1, 1, r, g, b, a,
+                x+w, y, 1, 0, r, g, b, a,
             ]);
             gl.bufferSubData(gl.ARRAY_BUFFER, id * BYTES_PER_FLOAT * FLOATS_PER_VERTEX * VERTICIES_PER_QUAD, quadBuffer);
         },
@@ -254,6 +273,7 @@ let QuadRenderer = (function() {
         },
         
         draw: function(start=0, count=MAX_QUADS) {
+            updateMatricies();
             gl.drawElements(gl.TRIANGLES, count * INDICIES_PER_QUAD, gl.UNSIGNED_SHORT, start * INDICIES_PER_QUAD * BYTES_PER_INDEX);
         },
         
@@ -263,7 +283,20 @@ let QuadRenderer = (function() {
         
         setColor: function(r, g, b, a) {
             gl.uniform4fv(colUniform, new Float32Array([r, g, b, a]));
-        }
+        },
+        
+        setSize: function(w, h) {
+            viewMat = mat4.ortho(0, w, 0, h);
+            VIEW_MATRIX_DIRTY = true;
+        },
+        
+        addTexture: function(id, image) {
+            textures[id] = setupTexture(id, image);
+        },
+        
+        useTexture: function(id) {
+            gl.uniform1i(texUniform, id);
+        },
     };
     
     function enableRendering() {
@@ -288,6 +321,17 @@ let QuadRenderer = (function() {
         RENDERING_AVAILABLE = false;
     }
     
+    function updateMatricies() {
+        if (WORLD_MATRIX_DIRTY) {
+            gl.uniformMatrix4fv(worldUniform, false, worldMat);
+            WORLD_MATRIX_DIRTY = false;
+        }
+        if (VIEW_MATRIX_DIRTY) {
+            gl.uniformMatrix4fv(viewUniform, false, viewMat);
+            VIEW_MATRIX_DIRTY = false;
+        }
+    }
+    
     function setupTexture(id, image) {
         if(!between(id, 0, 31)) {
             throw "id should be between 0 and 31 (unsigned 5-bit integer)";
@@ -299,7 +343,7 @@ let QuadRenderer = (function() {
         gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, image);
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
-        gl.activeTexture(null);
+        return tex;
     }
     
     let vertexShader = `
@@ -310,20 +354,21 @@ let QuadRenderer = (function() {
         varying vec4 vCol;
         varying vec2 vTcd;
         
-        uniform mat4 uProjection;
+        uniform mat4 uView;
+        uniform mat4 uWorld;
         
         void main() {
             vCol = aCol;
             vTcd = aTcd;
-            gl_Position = vec4(aPos, 0.0, 1.0);
+            gl_Position = uView * uWorld * vec4(aPos, 0.0, 1.0);
         }
     `;
     
     let fragmentShader = `
         precision mediump float;
         
-        varying vec4  vCol;
-        varying vec2  vTcd;
+        varying vec4 vCol;
+        varying vec2 vTcd;
         
         uniform vec4 uCol;
         uniform sampler2D uTex;
@@ -346,6 +391,45 @@ module.exports = QuadRenderer;
 
 module.exports = {
     between: (x, lo, hi) => x >= lo && x <= hi
+}
+
+/***/ }),
+/* 3 */
+/***/ (function(module, exports) {
+
+module.exports = {
+    identity: () => {
+        return new Float32Array([
+            1, 0, 0, 0,
+            0, 1, 0, 0,
+            0, 0, 1, 0,
+            0, 0, 0, 1,
+        ]);
+    },
+    
+    mul: (a, b) => {
+        let res = new Float32Array(16);
+        
+        for (let i=0, x=0, y=0; y < 4; y++) {
+            for (x=0; x < 4; x++) {
+                for (i=0; i < 4; i++) {
+                    res[x + y * 4] += a[i + y * 4] * b[x + i * 4];
+                }
+            }
+        }
+        
+        return res;
+    },
+    
+    
+    ortho: (l, r, t, b) => {
+        return new Float32Array([
+            (2 / (r - l)), 0, 0, 0,
+            0, (2 / (t - b)), 0, 0,
+            0, 0, -2, 0,
+            -(r + l) / (r - l), -(t + b) / (t - b), -1, 1,
+        ]);
+    },
 }
 
 /***/ })

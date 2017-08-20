@@ -41,19 +41,25 @@ window.onload = (function() {
     function draw() {
         QR.clear();
         
-        for (let i=0; i<1000; i++) {
-            QR.setQuad(i, (i%25)/25, ((i/25)|0)/40, 1/50, 1/50, 1, 0, 1, 1);
-        }
-        
+        QR.setQuad(0, 0, 0, 160, 120, 1, 0, 1, 1);
         QR.draw(0, 1000);
         window.requestAnimationFrame(draw);
     }
     
     return function() {
-        QR.init("game", { antialias: false });
-        
-        QR.setClearColor(0, 0, 0, 1);
-        
-        window.requestAnimationFrame(draw);
+        let image = new Image();
+        image.onload = function() {
+            QR.init("game", { antialias: false });
+            
+            QR.addTexture(0, image);
+            QR.useTexture(0);
+            
+            QR.setClearColor(0, 0, 0, 1);
+            QR.setSize(320, 240);
+            
+            window.requestAnimationFrame(draw);
+        }
+        image.src = "/res/test.png";
+        document.body.appendChild(image);
     };
 })();
