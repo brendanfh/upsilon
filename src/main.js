@@ -1,4 +1,5 @@
 let QR = require("./gfx/quad_renderer");
+let Keyboard = require("./input/keyboard");
 
 class Quad {
     constructor(x, y, w, h, r, g, b, a) {
@@ -42,17 +43,21 @@ window.onload = (function() {
         QR.clear();
         
         QR.setQuad(0, 0, 0, 160, 120, 1, 0, 1, 1);
-        QR.draw(0, 1000);
+        if (Keyboard.isDown(32)) {
+            QR.draw(0, 1000);
+        }
         window.requestAnimationFrame(draw);
     }
     
     return function() {
         let image = new Image();
         image.onload = function() {
+            Keyboard.init();
+            
             QR.init("game", { antialias: false });
             
-            QR.addTexture(0, image);
-            QR.useTexture(0);
+            QR.addTexture(10, image);
+            QR.useTexture(10);
             
             QR.setClearColor(0, 0, 0, 1);
             QR.setSize(320, 240);

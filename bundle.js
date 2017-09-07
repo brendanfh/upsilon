@@ -60,14 +60,29 @@
 /******/ 	__webpack_require__.p = "";
 /******/
 /******/ 	// Load entry module and return exports
-/******/ 	return __webpack_require__(__webpack_require__.s = 0);
+/******/ 	return __webpack_require__(__webpack_require__.s = 1);
 /******/ })
 /************************************************************************/
 /******/ ([
 /* 0 */
+/***/ (function(module, exports) {
+
+module.exports = {
+    between: (x, lo, hi) => x >= lo && x <= hi,
+    range: function*(lo, hi, step=1) {
+        while (lo <= hi) {
+            yield lo;
+            lo += step;
+        } 
+    }
+}
+
+/***/ }),
+/* 1 */
 /***/ (function(module, exports, __webpack_require__) {
 
-let QR = __webpack_require__(1);
+let QR = __webpack_require__(2);
+let Keyboard = __webpack_require__(4);
 
 class Quad {
     constructor(x, y, w, h, r, g, b, a) {
@@ -111,17 +126,21 @@ window.onload = (function() {
         QR.clear();
         
         QR.setQuad(0, 0, 0, 160, 120, 1, 0, 1, 1);
-        QR.draw(0, 1000);
+        if (Keyboard.isDown(32)) {
+            QR.draw(0, 1000);
+        }
         window.requestAnimationFrame(draw);
     }
     
     return function() {
         let image = new Image();
         image.onload = function() {
+            Keyboard.init();
+            
             QR.init("game", { antialias: false });
             
-            QR.addTexture(0, image);
-            QR.useTexture(0);
+            QR.addTexture(10, image);
+            QR.useTexture(10);
             
             QR.setClearColor(0, 0, 0, 1);
             QR.setSize(320, 240);
@@ -135,10 +154,10 @@ window.onload = (function() {
 
 
 /***/ }),
-/* 1 */
+/* 2 */
 /***/ (function(module, exports, __webpack_require__) {
 
-let between = __webpack_require__(2).between;
+let between = __webpack_require__(0).between;
 let mat4 = __webpack_require__(3);
 
 let QuadRenderer = (function() {
@@ -386,14 +405,6 @@ module.exports = QuadRenderer;
 
 
 /***/ }),
-/* 2 */
-/***/ (function(module, exports) {
-
-module.exports = {
-    between: (x, lo, hi) => x >= lo && x <= hi
-}
-
-/***/ }),
 /* 3 */
 /***/ (function(module, exports) {
 
@@ -421,7 +432,6 @@ module.exports = {
         return res;
     },
     
-    
     ortho: (l, r, t, b) => {
         return new Float32Array([
             (2 / (r - l)), 0, 0, 0,
@@ -431,6 +441,66 @@ module.exports = {
         ]);
     },
 }
+
+/***/ }),
+/* 4 */
+/***/ (function(module, exports, __webpack_require__) {
+
+let range = __webpack_require__(0).range;
+
+module.exports = (function() {
+    let keys = (function() {
+        let res = [];
+        for (let _ of range(0, 256)) {
+            res.push(new Uint8Array(2));
+        }
+        return res;
+    })();
+    
+    let Keyboard = {
+        init: function() {
+            document.addEventListener("keydown", (e) => {
+                keys[e.which].set([1, 2]);
+            });
+            document.addEventListener("keyup", (e) => {
+                keys[e.which].set([0, 0]);
+            });
+        },
+        
+        isDown: function(key) {
+            if (typeof key == "number") {
+                return !!keys[key][0];
+            } else {
+                throw "unimplemented";
+            }
+        },
+        
+        isUp: function(key) {
+            if (typeof key == "number") {
+                return !keys[key][0];
+            } else {
+                throw "unimplemented";
+            }
+        },
+        
+        isJustDown: function(key) {
+            if (typeof key == "number") {
+                return !!keys[key][0] && keys[key][1] > 0
+            } else {
+                throw "unimplemented";
+            } 
+        },
+        
+        update: function() {
+            for (let i=0; i<256; i++) {
+                let v = keys[i][1]
+                keys[i][1] = Math.max(0, v - 1);
+            }
+        }
+    }
+    
+    return Keyboard;
+})();
 
 /***/ })
 /******/ ]);

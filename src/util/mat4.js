@@ -22,7 +22,6 @@ module.exports = {
         return res;
     },
     
-    
     ortho: (l, r, t, b) => {
         return new Float32Array([
             (2 / (r - l)), 0, 0, 0,
